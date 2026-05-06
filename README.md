@@ -1,7 +1,7 @@
 # 🖼️ Стохастический растр (Stochastic Halftone Processor)
 
 ![исходник](https://github.com/ANDREY1182/stochastic-rasterizer/blob/main/halftone_128x64.png)
-![результат]()
+![результат](https://github.com/ANDREY1182/stochastic-rasterizer/blob/main/halftone_128x64.png)
 
 Веб-инструмент для преобразования растровых изображений в чёрно-белый стохастический (FM) растр. Работает полностью в браузере с использованием алгоритма диффузии ошибок Флойда-Стейнберга. Не требует серверной части, зависимостей или установки.
 
