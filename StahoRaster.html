@@ -2,41 +2,62 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Стохастический растр + Кадрирование + Масштаб</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Стохастический растр + Мобильное кадрирование</title>
   <style>
     :root { --primary: #0d6efd; --bg: #f0f2f5; --card: #fff; --text: #333; --muted: #6c757d; }
-    body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 20px; color: var(--text); }
-    .container { max-width: 950px; margin: 0 auto; background: var(--card); padding: 24px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-    h2 { margin-top: 0; }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 16px; color: var(--text); }
+    .container { max-width: 900px; margin: 0 auto; background: var(--card); padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    h2 { margin-top: 0; font-size: 20px; }
     
-    .upload-zone { border: 2px dashed #ced4da; border-radius: 10px; padding: 40px 20px; text-align: center; background: #fafafa; transition: 0.2s; cursor: pointer; }
+    .upload-zone { border: 2px dashed #ced4da; border-radius: 10px; padding: 30px 20px; text-align: center; background: #fafafa; transition: 0.2s; cursor: pointer; }
     .upload-zone:hover, .upload-zone.dragover { border-color: var(--primary); background: #f8f9ff; }
-    .upload-icon { font-size: 48px; margin-bottom: 8px; opacity: 0.8; }
-    .upload-text { margin: 0 0 12px; color: var(--muted); }
-    .upload-btn { padding: 8px 20px; border: none; border-radius: 6px; background: var(--primary); color: #fff; font-weight: 500; cursor: pointer; }
+    .upload-icon { font-size: 40px; margin-bottom: 6px; opacity: 0.8; }
+    .upload-text { margin: 0 0 10px; color: var(--muted); font-size: 14px; }
+    .upload-btn { padding: 8px 18px; border: none; border-radius: 6px; background: var(--primary); color: #fff; font-weight: 500; cursor: pointer; }
     .upload-btn:hover { background: #0b5ed7; }
     input[type="file"] { display: none; }
     .upload-hidden { display: none !important; }
 
-    .controls { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; margin: 16px 0; padding: 16px; background: #f8f9fa; border-radius: 8px; }
-    .control-group { display: flex; flex-direction: column; gap: 6px; }
+    .controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; margin: 14px 0; padding: 12px; background: #f8f9fa; border-radius: 8px; }
+    .control-group { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 140px; }
     .control-group label { font-size: 12px; color: var(--muted); font-weight: 500; }
     .row { display: flex; align-items: center; gap: 6px; }
-    input[type="range"] { width: 130px; }
-    input[type="number"] { width: 55px; padding: 4px; border: 1px solid #ced4da; border-radius: 4px; text-align: center; }
-    button { padding: 8px 16px; border: none; border-radius: 6px; background: var(--primary); color: white; cursor: pointer; font-weight: 500; transition: 0.2s; white-space: nowrap; }
+    input[type="range"] { width: 100%; max-width: 120px; }
+    input[type="number"] { width: 50px; padding: 4px; border: 1px solid #ced4da; border-radius: 4px; text-align: center; }
+    button { padding: 8px 14px; border: none; border-radius: 6px; background: var(--primary); color: white; cursor: pointer; font-weight: 500; transition: 0.2s; }
     button:disabled { background: #adb5bd; cursor: not-allowed; }
     button:hover:not(:disabled) { background: #0b5ed7; }
     button.secondary { background: #6c757d; }
-    button.secondary:hover:not(:disabled) { background: #5c636a; }
+    button.ghost { background: transparent; border: 1px solid var(--primary); color: var(--primary); padding: 6px 10px; font-size: 12px; }
+    button.ghost:hover:not(:disabled) { background: #e7f1ff; }
 
-    .canvas-wrapper { position: relative; margin-top: 12px; border: 1px solid #dee2e6; background: #fafafa; min-height: 250px; display: flex; align-items: center; justify-content: center; overflow: hidden; border-radius: 6px; }
-    canvas { display: block; max-width: 100%; height: auto; cursor: crosshair; }
+    .canvas-wrapper { position: relative; margin-top: 12px; border: 1px solid #dee2e6; background: #fafafa; min-height: 200px; display: flex; align-items: center; justify-content: center; overflow: hidden; border-radius: 6px; touch-action: none; }
+    canvas { display: block; max-width: 100%; height: auto; }
     
-    .selection-box { position: absolute; border: 2px dashed var(--primary); background: rgba(13, 110, 253, 0.15); pointer-events: none; display: none; z-index: 10; box-sizing: border-box; }
-    .selection-info { position: absolute; bottom: -24px; left: 0; background: rgba(0,0,0,0.75); color: #fff; padding: 3px 8px; font-size: 11px; border-radius: 4px; white-space: nowrap; pointer-events: none; }
-    .info { margin-top: 12px; font-size: 13px; color: var(--muted); line-height: 1.4; }
+    /* Рамка и оверлей */
+    .crop-overlay { position: absolute; inset: 0; pointer-events: none; display: none; z-index: 20; }
+    .crop-frame {
+      position: absolute;
+      border: 2px solid #fff;
+      box-shadow: 0 0 0 9999px rgba(0,0,0,0.6);
+      cursor: move;
+      pointer-events: auto;
+      touch-action: none;
+      z-index: 21;
+    }
+    .crop-handle {
+      position: absolute; bottom: -9px; right: -9px; width: 18px; height: 18px;
+      background: var(--primary); border: 2px solid #fff; border-radius: 50%;
+      cursor: nwse-resize; pointer-events: auto; touch-action: none;
+      z-index: 22; box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+    }
+    .crop-info {
+      position: absolute; top: -24px; left: 0; background: rgba(0,0,0,0.8); color: #fff;
+      padding: 4px 8px; font-size: 11px; border-radius: 4px; white-space: nowrap; pointer-events: none;
+    }
+    .info { margin-top: 10px; font-size: 13px; color: var(--muted); line-height: 1.4; }
     .divider { width: 100%; height: 1px; background: #e9ecef; margin: 4px 0; }
   </style>
 </head>
@@ -47,30 +68,33 @@
     <div class="upload-zone" id="dropZone">
       <input type="file" id="imageInput" accept="image/*">
       <div class="upload-icon">📁</div>
-      <p class="upload-text">Перетащите изображение сюда или нажмите кнопку</p>
+      <p class="upload-text">Перетащите изображение или нажмите кнопку</p>
       <button class="upload-btn" id="triggerUpload">Выбрать файл</button>
     </div>
 
-    <button id="newFileBtn" class="upload-hidden" style="margin-top: 12px;">🔄 Загрузить другое</button>
+    <button id="newFileBtn" class="upload-hidden" style="margin-top: 10px;">🔄 Загрузить другое</button>
     
     <div class="controls" id="controlsPanel" style="display: none;">
       <div class="control-group">
-        <label>📐 Масштабирование (всё изображение)</label>
+        <label>📐 Масштабирование</label>
         <div class="row">
           <input type="number" id="scaleW" min="1" placeholder="W"> x 
           <input type="number" id="scaleH" min="1" placeholder="H">
-          <label style="font-size:12px; margin-left:4px;"><input type="checkbox" id="lockAspect" checked> Пропорции</label>
+          <label style="font-size:11px;"><input type="checkbox" id="lockAspect" checked> Пропорции</label>
         </div>
-        <button id="scaleBtn">Изменить размер</button>
+        <button id="scaleBtn" style="margin-top:4px;">Изменить размер</button>
       </div>
 
       <div class="control-group">
-        <label>✂️ Кадрирование (выделение мышкой)</label>
+        <label>✂️ Кадрирование (целевой размер)</label>
         <div class="row">
           <input type="number" id="cropW" value="128" min="1"> x 
           <input type="number" id="cropH" value="64" min="1">
         </div>
-        <button id="cropBtn" disabled>Вырезать и масштабировать</button>
+        <div class="row" style="margin-top:4px; justify-content: space-between;">
+          <button id="cropBtn">Применить выделение</button>
+          <button id="showCropBtn" class="ghost">👁 Показать рамку</button>
+        </div>
       </div>
 
       <div class="divider"></div>
@@ -78,11 +102,14 @@
       <div class="control-group">
         <label>⚙️ Настройки растра</label>
         <div class="row">
+          <label>Контраст: <input type="range" id="contrast" min="0" max="200" value="100"> <span id="contrastVal">100%</span></label>
+        </div>
+        <div class="row">
           <label>Порог: <input type="range" id="threshold" min="0" max="255" value="128"> <span id="threshVal">128</span></label>
         </div>
-        <div class="row" style="gap: 8px;">
-          <button id="processBtn">⚡ Обработать вручную</button>
-          <button id="downloadBtn" disabled>💾 Скачать PNG</button>
+        <div class="row" style="gap: 8px; margin-top: 4px;">
+          <button id="processBtn">⚡ Обновить</button>
+          <button id="downloadBtn" disabled>💾 Скачать</button>
           <button id="resetBtn" class="secondary">↺ Сброс</button>
         </div>
       </div>
@@ -90,17 +117,20 @@
 
     <div class="canvas-wrapper" id="canvasWrapper" style="display: none;">
       <canvas id="canvas" width="0" height="0"></canvas>
-      <div class="selection-box" id="selectionBox">
-        <div class="selection-info" id="selectionInfo"></div>
+      <div class="crop-overlay" id="cropOverlay">
+        <div class="crop-frame" id="cropFrame">
+          <div class="crop-info" id="cropInfo"></div>
+          <div class="crop-handle" id="cropHandle"></div>
+        </div>
       </div>
     </div>
     <div class="info" id="infoText" style="display: none;">
-      💡 <b>Порядок:</b> Загрузить → (опционально) Масштабировать → Выделить область → Кадрировать → Двигать ползунок порога (авто-обновление) → Скачать.
+      💡 Перетаскивайте рамку или тяните за синий кружок. Нажмите "Применить выделение" для кадрирования. Ползунки обновляют растр автоматически.
     </div>
   </div>
 
   <script>
-    // Elements
+    // --- Elements ---
     const dropZone = document.getElementById('dropZone');
     const imageInput = document.getElementById('imageInput');
     const triggerUpload = document.getElementById('triggerUpload');
@@ -115,65 +145,69 @@
     const cropW = document.getElementById('cropW');
     const cropH = document.getElementById('cropH');
     const cropBtn = document.getElementById('cropBtn');
+    const showCropBtn = document.getElementById('showCropBtn');
     const processBtn = document.getElementById('processBtn');
     const downloadBtn = document.getElementById('downloadBtn');
     const resetBtn = document.getElementById('resetBtn');
     const thresholdInput = document.getElementById('threshold');
     const threshVal = document.getElementById('threshVal');
+    const contrastInput = document.getElementById('contrast');
+    const contrastVal = document.getElementById('contrastVal');
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    const selectionBox = document.getElementById('selectionBox');
-    const selectionInfo = document.getElementById('selectionInfo');
+    const cropOverlay = document.getElementById('cropOverlay');
+    const cropFrame = document.getElementById('cropFrame');
+    const cropHandle = document.getElementById('cropHandle');
+    const cropInfo = document.getElementById('cropInfo');
 
-    // State
+    // --- State ---
     let originalSrc = null;
+    let originalImageData = null;
     let currentAspect = 1;
-    let preHalftoneData = null; // Хранит пиксели ДО растрирования
-    let debounceTimer = null;
-    let isSelecting = false;
-    let selStart = { x: 0, y: 0 };
-    let selEnd = { x: 0, y: 0 };
-    let hasSelection = false;
+    let frameState = { left: 0, top: 0, width: 0, height: 0 };
+    let aspectRatio = 2;
+    let isDragging = false, isResizing = false;
+    let dragData = {};
+    let processDebounce = null;
+    const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 
-    thresholdInput.addEventListener('input', () => {
-      threshVal.textContent = thresholdInput.value;
-      // Debounce 150ms для плавности и предотвращения фризов
-      clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(() => {
-        if (preHalftoneData) applyHalftone(parseInt(thresholdInput.value));
-      }, 150);
-    });
-
-    // --- ЗАГРУЗКА ---
-    triggerUpload.addEventListener('click', (e) => { e.stopPropagation(); imageInput.click(); });
+    // --- Events Setup ---
+    triggerUpload.addEventListener('click', e => { e.stopPropagation(); imageInput.click(); });
     dropZone.addEventListener('click', () => imageInput.click());
-    ['dragenter', 'dragover'].forEach(evt => dropZone.addEventListener(evt, (e) => { e.preventDefault(); dropZone.classList.add('dragover'); }));
-    ['dragleave', 'drop'].forEach(evt => dropZone.addEventListener(evt, (e) => { e.preventDefault(); dropZone.classList.remove('dragover'); }));
-    dropZone.addEventListener('drop', (e) => { if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); });
-    imageInput.addEventListener('change', (e) => { if(e.target.files[0]) handleFile(e.target.files[0]); });
+    ['dragenter', 'dragover'].forEach(e => dropZone.addEventListener(e, ev => { ev.preventDefault(); dropZone.classList.add('dragover'); }));
+    ['dragleave', 'drop'].forEach(e => dropZone.addEventListener(e, ev => { ev.preventDefault(); dropZone.classList.remove('dragover'); }));
+    dropZone.addEventListener('drop', e => { if(e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); });
+    imageInput.addEventListener('change', e => { if(e.target.files[0]) handleFile(e.target.files[0]); });
     newFileBtn.addEventListener('click', () => { imageInput.value = ''; imageInput.click(); });
 
+    thresholdInput.addEventListener('input', () => { threshVal.textContent = thresholdInput.value; scheduleProcess(); });
+    contrastInput.addEventListener('input', () => { contrastVal.textContent = contrastInput.value + '%'; scheduleProcess(); });
+    processBtn.addEventListener('click', () => { clearTimeout(processDebounce); processImage(parseInt(thresholdInput.value), parseInt(contrastInput.value)); });
+    downloadBtn.addEventListener('click', () => {
+      const a = document.createElement('a');
+      a.download = `halftone_${canvas.width}x${canvas.height}.png`;
+      a.href = canvas.toDataURL('image/png');
+      a.click();
+    });
+    resetBtn.addEventListener('click', () => { if(originalSrc) loadImageToCanvas(originalSrc); });
+    showCropBtn.addEventListener('click', () => { cropOverlay.style.display = 'block'; updateCropDOM(); });
+
+    // --- Image Loading ---
     function handleFile(file) {
-      if (!file || !file.type.startsWith('image/')) return alert('Выберите изображение (JPG, PNG, WebP)');
+      if (!file || !file.type.startsWith('image/')) return alert('Выберите изображение');
       const reader = new FileReader();
-      reader.onload = (ev) => {
-        originalSrc = ev.target.result;
-        loadImageToCanvas(originalSrc);
-      };
+      reader.onload = ev => { originalSrc = ev.target.result; loadImageToCanvas(originalSrc); };
       reader.readAsDataURL(file);
     }
 
     function loadImageToCanvas(src) {
       const img = new Image();
       img.onload = () => {
-        canvas.width = img.width;
-        canvas.height = img.height;
+        canvas.width = img.width; canvas.height = img.height;
         ctx.drawImage(img, 0, 0);
-        
         currentAspect = img.width / img.height;
-        scaleW.value = img.width;
-        scaleH.value = img.height;
-        saveBaseState(); // Сохраняем исходные пиксели
+        scaleW.value = img.width; scaleH.value = img.height;
+        saveOriginalState();
         
         dropZone.classList.add('upload-hidden');
         newFileBtn.classList.remove('upload-hidden');
@@ -181,168 +215,153 @@
         canvasWrapper.style.display = 'flex';
         infoText.style.display = 'block';
         
-        resetState();
-        downloadBtn.disabled = false;
-        resetBtn.disabled = false;
+        cropOverlay.style.display = 'block';
+        initCropFrame();
+        downloadBtn.disabled = false; resetBtn.disabled = false; showCropBtn.classList.add('upload-hidden');
+        scheduleProcess();
       };
       img.src = src;
     }
 
-    // Сохраняет текущее состояние холста как "базу" для растрирования
-    function saveBaseState() {
-      preHalftoneData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    function saveOriginalState() { originalImageData = ctx.getImageData(0, 0, canvas.width, canvas.height); }
+
+    // --- Scaling ---
+    scaleW.addEventListener('input', () => { if(lockAspect.checked && scaleW.value) scaleH.value = Math.round(scaleW.value / currentAspect); });
+    scaleH.addEventListener('input', () => { if(lockAspect.checked && scaleH.value) scaleW.value = Math.round(scaleH.value * currentAspect); });
+    scaleBtn.addEventListener('click', () => {
+      let w = parseInt(scaleW.value), h = parseInt(scaleH.value);
+      if (!w || !h || w < 1 || h < 1) return alert('Корректные размеры');
+      if (w === canvas.width && h === canvas.height) return;
+      const temp = document.createElement('canvas'); temp.width = w; temp.height = h;
+      const tCtx = temp.getContext('2d'); tCtx.imageSmoothingEnabled = true; tCtx.imageSmoothingQuality = 'high';
+      tCtx.drawImage(canvas, 0, 0, w, h);
+      canvas.width = w; canvas.height = h; ctx.drawImage(temp, 0, 0);
+      currentAspect = w / h; saveOriginalState(); 
+      cropOverlay.style.display = 'block'; initCropFrame(); scheduleProcess();
+    });
+
+    // --- Crop Frame Logic ---
+    function getGeometry() {
+      const c = canvas.getBoundingClientRect();
+      const w = canvasWrapper.getBoundingClientRect();
+      return {
+        offX: c.left - w.left, offY: c.top - w.top,
+        sx: c.width / canvas.width, sy: c.height / canvas.height
+      };
     }
 
-    // Применяет стохастический растр к сохраненной базе
-    function applyHalftone(threshold) {
-      if (!preHalftoneData) return;
-      const w = preHalftoneData.width;
-      const h = preHalftoneData.height;
-      // Клонируем данные, чтобы не портить базу
-      const imageData = new ImageData(new Uint8ClampedArray(preHalftoneData.data), w, h);
-      const d = imageData.data;
-      const clamp = v => v < 0 ? 0 : v > 255 ? 255 : v;
+    function updateCropDOM() {
+      const g = getGeometry();
+      cropFrame.style.left = (g.offX + frameState.left * g.sx) + 'px';
+      cropFrame.style.top = (g.offY + frameState.top * g.sy) + 'px';
+      cropFrame.style.width = (frameState.width * g.sx) + 'px';
+      cropFrame.style.height = (frameState.height * g.sy) + 'px';
+      cropInfo.textContent = `${Math.round(frameState.width)}×${Math.round(frameState.height)} px`;
+    }
 
-      // 1. Grayscale
-      for (let i = 0; i < d.length; i += 4) {
-        const g = 0.299 * d[i] + 0.587 * d[i+1] + 0.114 * d[i+2];
-        d[i] = d[i+1] = d[i+2] = g;
+    function initCropFrame() {
+      aspectRatio = (parseInt(cropW.value) || 128) / (parseInt(cropH.value) || 64);
+      let w = canvas.width * 0.7, h = w / aspectRatio;
+      if (h > canvas.height) { h = canvas.height * 0.7; w = h * aspectRatio; }
+      frameState = { left: (canvas.width - w)/2, top: (canvas.height - h)/2, width: w, height: h };
+      updateCropDOM();
+    }
+
+    cropW.addEventListener('input', () => { aspectRatio = parseInt(cropW.value)/parseInt(cropH.value); initCropFrame(); });
+    cropH.addEventListener('input', () => { aspectRatio = parseInt(cropW.value)/parseInt(cropH.value); initCropFrame(); });
+
+    // Drag & Resize (Pointer Events)
+    cropFrame.addEventListener('pointerdown', e => {
+      if(e.target === cropHandle) return;
+      e.preventDefault(); isDragging = true;
+      dragData = { x: e.clientX, y: e.clientY, sx: getGeometry().sx, sy: getGeometry().sy, left: frameState.left, top: frameState.top };
+      cropFrame.setPointerCapture(e.pointerId);
+    });
+    cropHandle.addEventListener('pointerdown', e => {
+      e.preventDefault(); e.stopPropagation(); isResizing = true;
+      dragData = { x: e.clientX, y: e.clientY, sx: getGeometry().sx, sy: getGeometry().sy, w: frameState.width, h: frameState.height, left: frameState.left, top: frameState.top };
+      cropHandle.setPointerCapture(e.pointerId);
+    });
+
+    window.addEventListener('pointermove', e => {
+      if (!isDragging && !isResizing) return;
+      e.preventDefault();
+      const dx = (e.clientX - dragData.x) / dragData.sx;
+      const dy = (e.clientY - dragData.y) / dragData.sy;
+
+      if (isDragging) {
+        frameState.left = clamp(dragData.left + dx, 0, canvas.width - frameState.width);
+        frameState.top = clamp(dragData.top + dy, 0, canvas.height - frameState.height);
+      } else if (isResizing) {
+        let nw = clamp(dragData.w + dx, 20, canvas.width - dragData.left);
+        let nh = nw / aspectRatio;
+        if (nh > canvas.height - dragData.top) { nh = canvas.height - dragData.top; nw = nh * aspectRatio; }
+        frameState.width = nw; frameState.height = nh;
+      }
+      updateCropDOM();
+    });
+    window.addEventListener('pointerup', () => { isDragging = false; isResizing = false; });
+    window.addEventListener('resize', () => { if(cropOverlay.style.display !== 'none') updateCropDOM(); });
+
+    // Crop Execution
+    cropBtn.addEventListener('click', () => {
+      let tw = Math.max(1, parseInt(cropW.value)||128);
+      let th = Math.max(1, parseInt(cropH.value)||64);
+      let sx = Math.round(clamp(frameState.left, 0, canvas.width));
+      let sy = Math.round(clamp(frameState.top, 0, canvas.height));
+      let sw = Math.round(clamp(frameState.width, 2, canvas.width - sx));
+      let sh = Math.round(clamp(frameState.height, 2, canvas.height - sy));
+
+      const temp = document.createElement('canvas'); temp.width = tw; temp.height = th;
+      const tCtx = temp.getContext('2d'); tCtx.imageSmoothingEnabled = true; tCtx.imageSmoothingQuality = 'high';
+      tCtx.drawImage(canvas, sx, sy, sw, sh, 0, 0, tw, th);
+      
+      canvas.width = tw; canvas.height = th; ctx.drawImage(temp, 0, 0);
+      currentAspect = tw / th; scaleW.value = tw; scaleH.value = th;
+      saveOriginalState(); 
+      cropOverlay.style.display = 'none'; // Скрываем рамку и затемнение
+      showCropBtn.classList.remove('upload-hidden'); // Показываем кнопку вызова рамки
+      scheduleProcess();
+    });
+
+    // --- Halftone Pipeline ---
+    function scheduleProcess() {
+      clearTimeout(processDebounce);
+      processDebounce = setTimeout(() => processImage(parseInt(thresholdInput.value), parseInt(contrastInput.value)), 120);
+    }
+
+    function processImage(threshold, contrastPercent) {
+      if (!originalImageData) return;
+      const w = originalImageData.width, h = originalImageData.height;
+      const src = originalImageData.data;
+      const dst = new Uint8ClampedArray(src.length);
+      const c = contrastPercent / 100;
+      const clampV = v => v < 0 ? 0 : v > 255 ? 255 : v;
+
+      for (let i = 0; i < src.length; i += 4) {
+        let r = clampV(c * (src[i] - 128) + 128);
+        let g = clampV(c * (src[i+1] - 128) + 128);
+        let b = clampV(c * (src[i+2] - 128) + 128);
+        dst[i] = dst[i+1] = dst[i+2] = 0.299*r + 0.587*g + 0.114*b;
+        dst[i+3] = 255;
       }
 
-      // 2. Floyd-Steinberg Dithering
       for (let y = 0; y < h; y++) {
         for (let x = 0; x < w; x++) {
-          const idx = (y * w + x) * 4;
-          const old = d[idx];
-          const nw = old < threshold ? 0 : 255;
-          const err = old - nw;
-          d[idx] = d[idx+1] = d[idx+2] = nw;
-          if (x + 1 < w) d[idx + 4] = clamp(d[idx + 4] + err * 7/16);
-          if (y + 1 < h) {
-            if (x > 0) d[((y+1)*w + x-1)*4] = clamp(d[((y+1)*w + x-1)*4] + err * 3/16);
-            d[((y+1)*w + x)*4] = clamp(d[((y+1)*w + x)*4] + err * 5/16);
-            if (x + 1 < w) d[((y+1)*w + x+1)*4] = clamp(d[((y+1)*w + x+1)*4] + err * 1/16);
+          const idx = (y*w + x)*4;
+          const old = dst[idx], nw = old < threshold ? 0 : 255, err = old - nw;
+          dst[idx] = dst[idx+1] = dst[idx+2] = nw;
+          if(x+1<w) dst[idx+4] = clampV(dst[idx+4] + err*7/16);
+          if(y+1<h) {
+            if(x>0) dst[((y+1)*w+x-1)*4] = clampV(dst[((y+1)*w+x-1)*4] + err*3/16);
+            dst[((y+1)*w+x)*4] = clampV(dst[((y+1)*w+x)*4] + err*5/16);
+            if(x+1<w) dst[((y+1)*w+x+1)*4] = clampV(dst[((y+1)*w+x+1)*4] + err*1/16);
           }
         }
       }
-      ctx.putImageData(imageData, 0, 0);
+      ctx.putImageData(new ImageData(dst, w, h), 0, 0);
       downloadBtn.disabled = false;
     }
-
-    resetBtn.addEventListener('click', () => {
-      if (!originalSrc) return;
-      loadImageToCanvas(originalSrc);
-    });
-
-    // --- МАСШТАБИРОВАНИЕ ---
-    scaleW.addEventListener('input', () => { if(lockAspect.checked && scaleW.value) scaleH.value = Math.round(scaleW.value / currentAspect); });
-    scaleH.addEventListener('input', () => { if(lockAspect.checked && scaleH.value) scaleW.value = Math.round(scaleH.value * currentAspect); });
-
-    scaleBtn.addEventListener('click', () => {
-      let w = parseInt(scaleW.value);
-      let h = parseInt(scaleH.value);
-      if (!w || !h || w < 1 || h < 1) return alert('Введите корректные размеры');
-      if (w === canvas.width && h === canvas.height) return;
-
-      const temp = document.createElement('canvas');
-      temp.width = w; temp.height = h;
-      const tCtx = temp.getContext('2d');
-      tCtx.imageSmoothingEnabled = true;
-      tCtx.imageSmoothingQuality = 'high';
-      tCtx.drawImage(canvas, 0, 0, w, h);
-
-      canvas.width = w; canvas.height = h;
-      ctx.drawImage(temp, 0, 0);
-      
-      currentAspect = w / h;
-      saveBaseState(); // Обновляем базу после масштабирования
-      resetState(); downloadBtn.disabled = false;
-    });
-
-    function resetState() {
-      hasSelection = false; isSelecting = false;
-      cropBtn.disabled = true;
-      selectionBox.style.display = 'none'; selectionInfo.style.display = 'none';
-    }
-
-    // --- ВЫДЕЛЕНИЕ ---
-    const getCoords = (e) => {
-      const rect = canvas.getBoundingClientRect();
-      const sx = canvas.width / rect.width, sy = canvas.height / rect.height;
-      return {
-        x: Math.max(0, Math.min(canvas.width, (e.clientX - rect.left) * sx)),
-        y: Math.max(0, Math.min(canvas.height, (e.clientY - rect.top) * sy))
-      };
-    };
-
-    const updateSelUI = () => {
-      const rect = canvas.getBoundingClientRect();
-      const wrap = canvasWrapper.getBoundingClientRect();
-      const sx = rect.width / canvas.width, sy = rect.height / canvas.height;
-      const x = Math.min(selStart.x, selEnd.x), y = Math.min(selStart.y, selEnd.y);
-      const w = Math.abs(selEnd.x - selStart.x), h = Math.abs(selEnd.y - selStart.y);
-
-      selectionBox.style.left = (x*sx + rect.left - wrap.left) + 'px';
-      selectionBox.style.top = (y*sy + rect.top - wrap.top) + 'px';
-      selectionBox.style.width = (w*sx) + 'px';
-      selectionBox.style.height = (h*sy) + 'px';
-      
-      if (w > 2 && h > 2) {
-        selectionBox.style.display = 'block';
-        selectionInfo.style.display = 'block';
-        selectionInfo.textContent = `${Math.round(w)}×${Math.round(h)} px`;
-      } else { selectionBox.style.display = 'none'; selectionInfo.style.display = 'none'; }
-    };
-
-    canvas.addEventListener('mousedown', (e) => {
-      if(!canvas.width) return; e.preventDefault();
-      isSelecting = true; selStart = getCoords(e); selEnd = {...selStart}; hasSelection = false; updateSelUI();
-    });
-    canvas.addEventListener('mousemove', (e) => { if(isSelecting) { selEnd = getCoords(e); updateSelUI(); } });
-    canvas.addEventListener('mouseup', () => {
-      if(!isSelecting) return; isSelecting = false;
-      hasSelection = Math.abs(selEnd.x - selStart.x) > 2 && Math.abs(selEnd.y - selStart.y) > 2;
-      cropBtn.disabled = !hasSelection;
-    });
-
-    // --- КАДРИРОВАНИЕ ---
-    cropBtn.addEventListener('click', () => {
-      if(!hasSelection) return;
-      let tw = Math.max(1, parseInt(cropW.value)||128);
-      let th = Math.max(1, parseInt(cropH.value)||64);
-
-      let sx = Math.min(selStart.x, selEnd.x), sy = Math.min(selStart.y, selEnd.y);
-      let sw = Math.abs(selEnd.x - selStart.x), sh = Math.abs(selEnd.y - selStart.y);
-      sx = Math.max(0, Math.min(sx, canvas.width)); sy = Math.max(0, Math.min(sy, canvas.height));
-      sw = Math.min(sw, canvas.width - sx); sh = Math.min(sh, canvas.height - sy);
-      if(sw < 2 || sh < 2) return;
-
-      const temp = document.createElement('canvas');
-      temp.width = tw; temp.height = th;
-      const tCtx = temp.getContext('2d');
-      tCtx.imageSmoothingEnabled = true; tCtx.imageSmoothingQuality = 'high';
-      tCtx.drawImage(canvas, sx, sy, sw, sh, 0, 0, tw, th);
-
-      canvas.width = tw; canvas.height = th;
-      ctx.drawImage(temp, 0, 0);
-      
-      currentAspect = tw / th;
-      scaleW.value = tw; scaleH.value = th;
-      saveBaseState(); // Обновляем базу после кадрирования
-      resetState(); downloadBtn.disabled = false;
-    });
-
-    // --- КНОПКА РУЧНОЙ ОБРАБОТКИ ---
-    processBtn.addEventListener('click', () => {
-      if (preHalftoneData) applyHalftone(parseInt(thresholdInput.value));
-    });
-
-    downloadBtn.addEventListener('click', () => {
-      const a = document.createElement('a');
-      a.download = `halftone_${canvas.width}x${canvas.height}.png`;
-      a.href = canvas.toDataURL('image/png');
-      a.click();
-    });
   </script>
 </body>
 </html>
